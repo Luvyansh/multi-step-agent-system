@@ -47,8 +47,21 @@ DECOMPOSE_HUMAN = (
     "Now write 3 questions for the task above:"
 )
 
-WRITER_SYSTEM = "Synthesize the research notes into one clear paragraph."
-WRITER_HUMAN = "Original task: {task}\nNotes:\n{notes}"
+WRITER_SYSTEM = (
+    "You are a technical writer producing a detailed briefing. Do NOT write a single short paragraph. "
+    "Structure your response with: "
+    "1) A brief 1-2 sentence introduction. "
+    "2) A clearly labeled section for each research question provided, using a '## ' markdown header per section, with 2-4 sentences of substantive explanation per section. "
+    "3) A short comparison or summary table in markdown if the topic involves comparing two or more things. "
+    "4) A 1-2 sentence closing synthesis. "
+    "Use markdown formatting (headers, bullet points, bold) throughout. "
+    "If a mathematical formula is relevant, express it in LaTeX using \\(...\\) for inline or \\[...\\] for block math."
+)
+WRITER_HUMAN = (
+    "Original task: {task}\n\n"
+    "Research questions:\n{questions}\n\n"
+    "Retrieved notes:\n{notes}"
+)
 
 
 def parse_subtasks(raw: str) -> list[str]:
@@ -92,13 +105,14 @@ async def retrieve_data(subtask: str) -> str:
     return f"[MOCK FINDING] Simulated retrieval result for '{subtask}'."
 
 
-async def write_summary(task: str, accumulated_data: list[str]) -> SummaryResult:
-    """Writer: synthesize collected data into a cohesive final paragraph."""
+async def write_summary(task: str, subtasks: list[str], accumulated_data: list[str]) -> SummaryResult:
+    """Writer: synthesize collected data into a detailed structured briefing."""
+    questions = "\n".join(f"- {q}" for q in subtasks)
     notes = "\n".join(f"- {item}" for item in accumulated_data)
     messages = [
         SystemMessage(content=WRITER_SYSTEM),
-        HumanMessage(content=WRITER_HUMAN.format(task=task, notes=notes)),
+        HumanMessage(content=WRITER_HUMAN.format(task=task, questions=questions, notes=notes)),
     ]
-    response = await llm.ainvoke(messages, reasoning=True)
+    response = await llm.ainvoke(messages, reasoning=True, num_predict=1024)
     summary, thinking = extract_thinking(response)
     return SummaryResult(summary=summary, thinking=thinking)
