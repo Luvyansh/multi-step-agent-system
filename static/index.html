@@ -213,6 +213,56 @@
       color: var(--muted);
     }
 
+    .thinking-section {
+      margin-top: 0.5rem;
+      width: 100%;
+    }
+
+    .thinking-toggle {
+      background: none;
+      border: none;
+      color: var(--muted);
+      font-size: 0.78rem;
+      cursor: pointer;
+      padding: 0.15rem 0;
+      display: flex;
+      align-items: center;
+      gap: 0.35rem;
+      font-family: inherit;
+    }
+
+    .thinking-toggle:hover {
+      color: var(--text);
+    }
+
+    .thinking-toggle .arrow {
+      display: inline-block;
+      transition: transform 0.15s;
+      font-size: 0.65rem;
+    }
+
+    .thinking-toggle.open .arrow {
+      transform: rotate(90deg);
+    }
+
+    .thinking-content {
+      display: none;
+      margin-top: 0.4rem;
+      padding: 0.6rem 0.75rem;
+      background: rgba(0, 0, 0, 0.25);
+      border-radius: 6px;
+      font-size: 0.78rem;
+      color: var(--muted);
+      white-space: pre-wrap;
+      line-height: 1.45;
+      max-height: 240px;
+      overflow-y: auto;
+    }
+
+    .thinking-content.open {
+      display: block;
+    }
+
     .result-box {
       background: var(--bg);
       border: 1px solid var(--border);
@@ -402,7 +452,7 @@
       document.querySelectorAll(".prompt-btn").forEach((btn) => btn.classList.remove("active"));
     }
 
-    function addStep(step, detail, type = "running") {
+    function addStep(step, detail, type = "running", thinking = null, elapsedSeconds = null) {
       const empty = timeline.querySelector(".timeline-empty");
       if (empty) empty.remove();
 
@@ -416,6 +466,31 @@
           <span>${escapeHtml(detail)}</span>
         </div>
       `;
+
+      if (thinking) {
+        const section = document.createElement("div");
+        section.className = "thinking-section";
+
+        const seconds = elapsedSeconds != null ? Math.max(1, Math.round(elapsedSeconds)) : "?";
+        const toggle = document.createElement("button");
+        toggle.type = "button";
+        toggle.className = "thinking-toggle";
+        toggle.innerHTML = `<span class="arrow">▶</span> Thought for ${seconds}s`;
+
+        const content = document.createElement("div");
+        content.className = "thinking-content";
+        content.textContent = thinking;
+
+        toggle.addEventListener("click", () => {
+          toggle.classList.toggle("open");
+          content.classList.toggle("open");
+        });
+
+        section.appendChild(toggle);
+        section.appendChild(content);
+        item.querySelector(".step-body").appendChild(section);
+      }
+
       timeline.appendChild(item);
       item.scrollIntoView({ behavior: "smooth", block: "nearest" });
       return item;
@@ -515,7 +590,7 @@
         return;
       }
 
-      addStep(step, detail, isError ? "error" : "running");
+      addStep(step, detail, isError ? "error" : "running", data.thinking || null, data.elapsed_seconds ?? null);
 
       if (data.subtasks?.length) {
         addStep("Subtasks", data.subtasks.join(" | "), "done");
