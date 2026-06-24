@@ -8,8 +8,18 @@ from utils import retry_with_backoff
 
 llm = ChatOllama(model="gemma4:e2b", temperature=0)
 
-DECOMPOSE_SYSTEM = "Break tasks into exactly 3 subtasks. One subtask per line. No numbers or bullets."
-DECOMPOSE_HUMAN = "Task: {task}"
+DECOMPOSE_SYSTEM = (
+    "Break the task into exactly 3 specific research QUESTIONS needed to answer it. "
+    "Each line must be a question ending in '?'. No numbers, no bullets, no answers."
+)
+DECOMPOSE_HUMAN = (
+    "Task: {task}\n\n"
+    "Example for task 'Explain how vaccines work':\n"
+    "What is the biological mechanism by which vaccines trigger immunity?\n"
+    "What are the main types of vaccines and how do they differ?\n"
+    "What risks or side effects are associated with vaccines?\n\n"
+    "Now write 3 questions for the task above:"
+)
 
 WRITER_SYSTEM = "Synthesize the research notes into one clear paragraph."
 WRITER_HUMAN = "Original task: {task}\nNotes:\n{notes}"
@@ -21,7 +31,7 @@ def parse_subtasks(raw: str) -> list[str]:
         lines = []
         for line in raw.strip().splitlines():
             cleaned = re.sub(r"^[\d\.\-\*\|]+\s*", "", line.strip())
-            if cleaned:
+            if cleaned and "?" in cleaned:
                 lines.append(cleaned)
         if len(lines) >= 3:
             return lines[:3]
