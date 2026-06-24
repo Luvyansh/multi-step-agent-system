@@ -10,7 +10,7 @@ Built for constrained hardware (4 GB VRAM / limited RAM) using **Ollama** with `
 
 Given a complex technical task (e.g. *"Explain how solar panels work and their environmental impact"*), the engine:
 
-1. **Decomposes** the task into 3 focused subtasks using a local LLM.
+1. **Decomposes** the task into 3 focused research questions using a local LLM.
 2. **Retrieves** simulated research data for each subtask concurrently in small batches.
 3. **Synthesizes** all findings into a single coherent briefing paragraph.
 4. **Streams** real-time progress updates to the client via Server-Sent Events (SSE).
@@ -88,14 +88,14 @@ sequenceDiagram
     FastAPI->>Graph: astream(initial_state)
     Graph->>Agents: decompose(task)
     Agents->>Ollama: ainvoke (decompose prompt)
-    Ollama-->>Agents: 3 subtasks (line-based text)
+    Ollama-->>Agents: 3 research questions (line-based text)
     Agents-->>Graph: subtasks list
     FastAPI-->>Client: SSE: Step 1 - Task decomposed
 
     Graph->>Batch: process_items_in_batches(subtasks, 2)
     loop Each batch (max 2 concurrent)
         Batch->>Agents: retrieve_data(subtask)
-        Agents-->>Batch: mock research finding
+        Agents-->>Batch: [MOCK FINDING] simulated retrieval output
     end
     Batch-->>Graph: accumulated_data
     FastAPI-->>Client: SSE: Step 2 - Batch retrieval
@@ -160,11 +160,11 @@ Three distinct agent roles, all powered by `ChatOllama(model="gemma4:e2b", tempe
 
 | Agent | Function | Description |
 |-------|----------|-------------|
-| **Analyzer / Decomposer** | `decompose()` | Prompts the LLM to break a task into exactly 3 subtasks, one per line. Output is parsed with regex line-splitting (not JSON). Retries up to 2 times on parse failure. |
-| **Retriever** | `retrieve_data()` | Mock async data fetcher. Simulates 500 ms latency per subtask with `asyncio.sleep`. Returns a templated research finding string. Retries up to 2 times. |
+| **Analyzer / Decomposer** | `decompose()` | Prompts the LLM to break a task into exactly 3 research questions, one per line. Output is parsed with regex line-splitting (not JSON) and only lines containing `?` are accepted. Retries up to 2 times on parse failure. |
+| **Retriever** | `retrieve_data()` | Mock async data fetcher. Simulates 500 ms latency per subtask with `asyncio.sleep`. Returns output prefixed with `[MOCK FINDING]` to clearly indicate non-production behavior. Retries up to 2 times. |
 | **Writer** | `write_summary()` | Feeds all accumulated research notes to the LLM and asks for a single cohesive paragraph synthesizing the briefing. |
 
-**Parsing strategy:** Because `gemma4:e2b` is a compact 2B-parameter model, prompts request simple line-based output. `parse_subtasks()` strips numbering/bullets and validates that at least one subtask was found.
+**Parsing strategy:** Because `gemma4:e2b` is a compact 2B-parameter model, prompts request simple line-based output. `parse_subtasks()` strips numbering/bullets, keeps only question-shaped lines (`?`), and raises an error if no valid question survives.
 
 ### `batching.py` — Manual Async Batching
 
@@ -197,6 +197,8 @@ Manually built `StateGraph` with four nodes and conditional error routing:
 
 **Routing logic:** After each main node, a router checks for errors prefixed with `FATAL:`. If found, the graph transitions to `handle_error` instead of the next pipeline step.
 
+**Batch visibility:** Retrieval progress now records both planning and completion, e.g. `Running 3 subtask(s) in 2 batch(es) of up to 2 concurrent task(s)` followed by `Retrieved data for 3 subtasks`.
+
 ### `main.py` — FastAPI Streaming API
 
 | Endpoint | Method | Description |
@@ -212,7 +214,7 @@ The stream emits events for: pipeline start → each graph node completion → p
 
 ### `test_system.py` — Test Suite
 
-Four pytest tests (see [Tests.md](Tests.md) for details):
+Nine pytest tests (see [Tests.md](Tests.md) for details):
 
 | Test | Validates |
 |------|-----------|
@@ -220,6 +222,11 @@ Four pytest tests (see [Tests.md](Tests.md) for details):
 | `test_retry_decorator_fails_twice_then_succeeds` | Retry on 2 failures, success on 3rd attempt |
 | `test_route_after_decompose_to_error_on_fatal` | Conditional routing to error node |
 | `test_graph_routes_to_error_node_on_catastrophic_failure` | End-to-end error handling via mocked failure |
+| `test_parse_subtasks_accepts_valid_questions` | Question-only parsing on clean 3-line input |
+| `test_parse_subtasks_rejects_non_question_lines` | Filters non-question lines and retains valid question lines |
+| `test_parse_subtasks_raises_on_garbage_input` | Raises `ValueError` when no question lines exist |
+| `test_retrieve_data_is_labeled_as_mock` | Ensures retriever output keeps `[MOCK FINDING]` label |
+| `test_graph_happy_path_with_mocked_llm_calls` | End-to-end happy path through real retrieval/batching with mocked LLM calls |
 
 ---
 
