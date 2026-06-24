@@ -8,6 +8,7 @@ from langchain_ollama import ChatOllama
 from utils import retry_with_backoff
 
 llm = ChatOllama(model="gemma4:e2b", temperature=0)
+writer_llm = ChatOllama(model="gemma4:e2b", temperature=0, num_predict=1024)
 
 
 @dataclass
@@ -113,6 +114,6 @@ async def write_summary(task: str, subtasks: list[str], accumulated_data: list[s
         SystemMessage(content=WRITER_SYSTEM),
         HumanMessage(content=WRITER_HUMAN.format(task=task, questions=questions, notes=notes)),
     ]
-    response = await llm.ainvoke(messages, reasoning=True, num_predict=1024)
+    response = await writer_llm.ainvoke(messages, reasoning=True)
     summary, thinking = extract_thinking(response)
     return SummaryResult(summary=summary, thinking=thinking)
