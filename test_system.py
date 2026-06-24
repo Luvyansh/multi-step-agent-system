@@ -2,7 +2,7 @@ import asyncio
 import time
 from unittest.mock import AsyncMock, patch
 
-from agents import parse_subtasks, retrieve_data
+from agents import DecomposeResult, SummaryResult, parse_subtasks, retrieve_data
 from batching import process_items_in_batches
 from graph import build_graph, route_after_decompose
 from utils import retry_with_backoff
@@ -67,6 +67,7 @@ def test_route_after_decompose_to_error_on_fatal():
         "completed_steps": [],
         "accumulated_data": [],
         "errors": ["FATAL: Decomposition failed: parse error"],
+        "thinking_log": {},
     }
     assert route_after_decompose(state) == "handle_error"
 
@@ -87,6 +88,7 @@ def test_graph_routes_to_error_node_on_catastrophic_failure():
                     "completed_steps": [],
                     "accumulated_data": [],
                     "errors": [],
+                    "thinking_log": {},
                 }
             )
 
@@ -163,8 +165,8 @@ def test_graph_happy_path_with_mocked_llm_calls():
             patch("graph.decompose", new_callable=AsyncMock) as mock_decompose,
             patch("graph.write_summary", new_callable=AsyncMock) as mock_write_summary,
         ):
-            mock_decompose.return_value = mocked_questions
-            mock_write_summary.return_value = mocked_summary
+            mock_decompose.return_value = DecomposeResult(subtasks=mocked_questions, thinking="")
+            mock_write_summary.return_value = SummaryResult(summary=mocked_summary, thinking="")
 
             final_state = await graph.ainvoke(
                 {
@@ -173,6 +175,7 @@ def test_graph_happy_path_with_mocked_llm_calls():
                     "completed_steps": [],
                     "accumulated_data": [],
                     "errors": [],
+                    "thinking_log": {},
                 }
             )
 
