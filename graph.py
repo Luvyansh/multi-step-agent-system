@@ -15,16 +15,18 @@ def _initial_state(task: str) -> GraphState:
         "completed_steps": [],
         "accumulated_data": [],
         "errors": [],
+        "thinking_log": {},
     }
 
 
 async def decompose_task(state: GraphState) -> dict:
     """Break the original task into subtasks."""
     try:
-        subtasks = await decompose(state["original_task"])
+        result = await decompose(state["original_task"])
         return {
-            "subtasks": subtasks,
+            "subtasks": result.subtasks,
             "completed_steps": ["Task decomposed into subtasks"],
+            "thinking_log": {"decompose_task": result.thinking},
         }
     except Exception as exc:
         return {
@@ -66,10 +68,11 @@ async def execute_batch_retrieval(state: GraphState) -> dict:
 async def synthesize_output(state: GraphState) -> dict:
     """Synthesize retrieved data into a final briefing paragraph."""
     try:
-        summary = await write_summary(state["original_task"], state["accumulated_data"])
+        result = await write_summary(state["original_task"], state["accumulated_data"])
         return {
-            "accumulated_data": [summary],
+            "accumulated_data": [result.summary],
             "completed_steps": ["Final briefing synthesized"],
+            "thinking_log": {"synthesize_output": result.thinking},
         }
     except Exception as exc:
         return {
