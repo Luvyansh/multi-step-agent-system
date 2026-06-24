@@ -37,6 +37,14 @@ def _format_event(node_name: str, update: dict) -> str:
     if update.get("accumulated_data"):
         payload["output"] = update["accumulated_data"][-1]
 
+    if node_name in ("decompose_task", "synthesize_output"):
+        thinking_log = update.get("thinking_log", {})
+        if node_name in thinking_log and thinking_log[node_name]:
+            payload["thinking"] = thinking_log[node_name]
+        node_elapsed = update.get("node_elapsed", {})
+        if node_name in node_elapsed:
+            payload["elapsed_seconds"] = round(node_elapsed[node_name], 1)
+
     return f"data: {json.dumps(payload)}\n\n"
 
 
