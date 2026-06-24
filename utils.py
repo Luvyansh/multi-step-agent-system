@@ -1,5 +1,6 @@
 import asyncio
 import functools
+import inspect
 from collections.abc import Callable
 from typing import TypeVar
 
@@ -10,7 +11,7 @@ def retry_with_backoff(max_retries: int = 2, base_delay: float = 0.5):
     """Retry decorator with exponential backoff for async and sync callables."""
 
     def decorator(func: Callable[..., T]) -> Callable[..., T]:
-        if asyncio.iscoroutinefunction(func):
+        if inspect.iscoroutinefunction(func):
 
             @functools.wraps(func)
             async def async_wrapper(*args, **kwargs) -> T:
