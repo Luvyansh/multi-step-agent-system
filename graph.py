@@ -1,4 +1,5 @@
 from langgraph.graph import END, StateGraph
+import time
 
 from agents import decompose, retrieve_data, write_summary
 from batching import process_items_in_batches
@@ -16,17 +17,21 @@ def _initial_state(task: str) -> GraphState:
         "accumulated_data": [],
         "errors": [],
         "thinking_log": {},
+        "node_elapsed": {},
     }
 
 
 async def decompose_task(state: GraphState) -> dict:
     """Break the original task into subtasks."""
+    start = time.perf_counter()
     try:
         result = await decompose(state["original_task"])
+        elapsed = time.perf_counter() - start
         return {
             "subtasks": result.subtasks,
             "completed_steps": ["Task decomposed into subtasks"],
             "thinking_log": {"decompose_task": result.thinking},
+            "node_elapsed": {"decompose_task": elapsed},
         }
     except Exception as exc:
         return {
@@ -67,12 +72,15 @@ async def execute_batch_retrieval(state: GraphState) -> dict:
 
 async def synthesize_output(state: GraphState) -> dict:
     """Synthesize retrieved data into a final briefing paragraph."""
+    start = time.perf_counter()
     try:
         result = await write_summary(state["original_task"], state["accumulated_data"])
+        elapsed = time.perf_counter() - start
         return {
             "accumulated_data": [result.summary],
             "completed_steps": ["Final briefing synthesized"],
             "thinking_log": {"synthesize_output": result.thinking},
+            "node_elapsed": {"synthesize_output": elapsed},
         }
     except Exception as exc:
         return {
