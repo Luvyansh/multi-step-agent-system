@@ -4,6 +4,8 @@ import re
 from langchain_core.messages import HumanMessage, SystemMessage
 from langchain_ollama import ChatOllama
 
+from utils import retry_with_backoff
+
 llm = ChatOllama(model="gemma4:e2b", temperature=0)
 
 DECOMPOSE_SYSTEM = "Break tasks into exactly 3 subtasks. One subtask per line. No numbers or bullets."
@@ -30,6 +32,7 @@ def parse_subtasks(raw: str) -> list[str]:
         raise ValueError(f"Failed to parse subtasks: {exc}") from exc
 
 
+@retry_with_backoff(max_retries=2)
 async def decompose(task: str) -> list[str]:
     """Analyzer/Decomposer: break a complex task into 3 subtasks."""
     messages = [
@@ -41,6 +44,7 @@ async def decompose(task: str) -> list[str]:
     return parse_subtasks(content)
 
 
+@retry_with_backoff(max_retries=2)
 async def retrieve_data(subtask: str) -> str:
     """Mock retriever that simulates async data fetching for a subtask."""
     await asyncio.sleep(0.5)
