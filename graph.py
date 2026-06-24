@@ -43,10 +43,18 @@ async def execute_batch_retrieval(state: GraphState) -> dict:
         }
 
     try:
+        num_subtasks = len(subtasks)
+        num_batches = (num_subtasks + BATCH_SIZE - 1) // BATCH_SIZE
         results = await process_items_in_batches(subtasks, BATCH_SIZE, retrieve_data)
         return {
             "accumulated_data": results,
-            "completed_steps": [f"Retrieved data for {len(results)} subtasks"],
+            "completed_steps": [
+                (
+                    f"Running {num_subtasks} subtask(s) in {num_batches} batch(es) "
+                    f"of up to {BATCH_SIZE} concurrent task(s)"
+                ),
+                f"Retrieved data for {len(results)} subtasks",
+            ],
         }
     except Exception as exc:
         return {
