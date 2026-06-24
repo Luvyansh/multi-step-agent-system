@@ -56,9 +56,14 @@ async def decompose(task: str) -> list[str]:
 
 @retry_with_backoff(max_retries=2)
 async def retrieve_data(subtask: str) -> str:
-    """Mock retriever that simulates async data fetching for a subtask."""
+    """Mock retriever that simulates async data fetching for a subtask.
+
+    MOCK IMPLEMENTATION: this function only simulates retrieval latency.
+    In production, this would call a real data source such as a web search API,
+    internal document index, or vector database.
+    """
     await asyncio.sleep(0.5)
-    return f"Research finding for '{subtask}': key facts and context gathered."
+    return f"[MOCK FINDING] Simulated retrieval result for '{subtask}'."
 
 
 async def write_summary(task: str, accumulated_data: list[str]) -> str:
