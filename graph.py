@@ -74,7 +74,11 @@ async def synthesize_output(state: GraphState) -> dict:
     """Synthesize retrieved data into a final briefing paragraph."""
     start = time.perf_counter()
     try:
-        result = await write_summary(state["original_task"], state["accumulated_data"])
+        result = await write_summary(
+            state["original_task"],
+            state["subtasks"],
+            state["accumulated_data"],
+        )
         elapsed = time.perf_counter() - start
         return {
             "accumulated_data": [result.summary],
