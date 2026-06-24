@@ -68,6 +68,7 @@ def test_route_after_decompose_to_error_on_fatal():
         "accumulated_data": [],
         "errors": ["FATAL: Decomposition failed: parse error"],
         "thinking_log": {},
+        "node_elapsed": {},
     }
     assert route_after_decompose(state) == "handle_error"
 
@@ -89,6 +90,7 @@ def test_graph_routes_to_error_node_on_catastrophic_failure():
                     "accumulated_data": [],
                     "errors": [],
                     "thinking_log": {},
+                    "node_elapsed": {},
                 }
             )
 
@@ -176,6 +178,7 @@ def test_graph_happy_path_with_mocked_llm_calls():
                     "accumulated_data": [],
                     "errors": [],
                     "thinking_log": {},
+                    "node_elapsed": {},
                 }
             )
 
