@@ -1,12 +1,17 @@
 import json
+from pathlib import Path
 
 from fastapi import FastAPI
-from fastapi.responses import StreamingResponse
+from fastapi.responses import FileResponse, StreamingResponse
+from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
 from graph import compiled_graph, make_initial_state
 
 app = FastAPI(title="Multi-Step Technical Briefing Engine")
+
+STATIC_DIR = Path(__file__).parent / "static"
+app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
 
 
 class ExecuteRequest(BaseModel):
@@ -26,7 +31,19 @@ def _format_event(node_name: str, update: dict) -> str:
     steps = update.get("completed_steps", [])
     detail = steps[-1] if steps else "update received"
     payload = {"step": label, "detail": detail, "node": node_name}
+
+    if update.get("subtasks"):
+        payload["subtasks"] = update["subtasks"]
+    if update.get("accumulated_data"):
+        payload["output"] = update["accumulated_data"][-1]
+
     return f"data: {json.dumps(payload)}\n\n"
+
+
+@app.get("/")
+async def root():
+    """Serve the interactive frontend."""
+    return FileResponse(STATIC_DIR / "index.html")
 
 
 @app.post("/execute")

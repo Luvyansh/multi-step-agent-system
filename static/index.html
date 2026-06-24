@@ -1,0 +1,549 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Technical Briefing Engine</title>
+  <style>
+    :root {
+      --bg: #0f1419;
+      --surface: #1a2332;
+      --surface-hover: #243044;
+      --border: #2d3a4f;
+      --text: #e7ecf3;
+      --muted: #8b9cb3;
+      --accent: #3b82f6;
+      --accent-hover: #2563eb;
+      --success: #22c55e;
+      --error: #ef4444;
+      --warning: #f59e0b;
+      --radius: 10px;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: "Segoe UI", system-ui, -apple-system, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      line-height: 1.5;
+    }
+
+    .container {
+      max-width: 960px;
+      margin: 0 auto;
+      padding: 2rem 1.25rem 3rem;
+    }
+
+    header {
+      text-align: center;
+      margin-bottom: 2rem;
+    }
+
+    header h1 {
+      font-size: 1.75rem;
+      font-weight: 700;
+      letter-spacing: -0.02em;
+    }
+
+    header p {
+      color: var(--muted);
+      margin-top: 0.35rem;
+      font-size: 0.95rem;
+    }
+
+    .badge {
+      display: inline-block;
+      background: rgba(59, 130, 246, 0.15);
+      color: #93c5fd;
+      font-size: 0.75rem;
+      padding: 0.2rem 0.6rem;
+      border-radius: 999px;
+      margin-top: 0.75rem;
+    }
+
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 1.25rem;
+      margin-bottom: 1.25rem;
+    }
+
+    .card h2 {
+      font-size: 0.85rem;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: var(--muted);
+      margin-bottom: 0.85rem;
+    }
+
+    textarea {
+      width: 100%;
+      min-height: 110px;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      color: var(--text);
+      padding: 0.85rem;
+      font-size: 0.95rem;
+      font-family: inherit;
+      resize: vertical;
+      transition: border-color 0.15s;
+    }
+
+    textarea:focus {
+      outline: none;
+      border-color: var(--accent);
+    }
+
+    .prompt-list {
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+      max-height: 280px;
+      overflow-y: auto;
+    }
+
+    .prompt-btn {
+      text-align: left;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      color: var(--text);
+      padding: 0.65rem 0.85rem;
+      font-size: 0.88rem;
+      cursor: pointer;
+      transition: background 0.15s, border-color 0.15s;
+    }
+
+    .prompt-btn:hover {
+      background: var(--surface-hover);
+      border-color: var(--accent);
+    }
+
+    .prompt-btn.active {
+      border-color: var(--accent);
+      background: rgba(59, 130, 246, 0.1);
+    }
+
+    .actions {
+      display: flex;
+      gap: 0.75rem;
+      margin-top: 1rem;
+      flex-wrap: wrap;
+    }
+
+    button.primary {
+      background: var(--accent);
+      color: white;
+      border: none;
+      border-radius: 8px;
+      padding: 0.7rem 1.4rem;
+      font-size: 0.95rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background 0.15s;
+    }
+
+    button.primary:hover:not(:disabled) { background: var(--accent-hover); }
+    button.primary:disabled { opacity: 0.5; cursor: not-allowed; }
+
+    button.secondary {
+      background: transparent;
+      color: var(--muted);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 0.7rem 1.2rem;
+      font-size: 0.9rem;
+      cursor: pointer;
+      transition: color 0.15s, border-color 0.15s;
+    }
+
+    button.secondary:hover:not(:disabled) {
+      color: var(--text);
+      border-color: var(--muted);
+    }
+
+    button.secondary:disabled { opacity: 0.4; cursor: not-allowed; }
+
+    .timeline {
+      display: flex;
+      flex-direction: column;
+      gap: 0.6rem;
+      min-height: 60px;
+    }
+
+    .timeline-empty {
+      color: var(--muted);
+      font-size: 0.9rem;
+      font-style: italic;
+    }
+
+    .step-item {
+      display: flex;
+      gap: 0.75rem;
+      align-items: flex-start;
+      padding: 0.65rem 0.75rem;
+      background: var(--bg);
+      border-radius: 8px;
+      border-left: 3px solid var(--border);
+      animation: fadeIn 0.3s ease;
+    }
+
+    .step-item.running { border-left-color: var(--warning); }
+    .step-item.done { border-left-color: var(--success); }
+    .step-item.error { border-left-color: var(--error); }
+    .step-item.complete { border-left-color: var(--accent); }
+
+    .step-icon {
+      font-size: 1rem;
+      line-height: 1.4;
+      flex-shrink: 0;
+    }
+
+    .step-body strong {
+      display: block;
+      font-size: 0.9rem;
+    }
+
+    .step-body span {
+      font-size: 0.82rem;
+      color: var(--muted);
+    }
+
+    .result-box {
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 1rem;
+      font-size: 0.95rem;
+      white-space: pre-wrap;
+      min-height: 80px;
+      color: var(--muted);
+    }
+
+    .result-box.has-content {
+      color: var(--text);
+      border-color: var(--success);
+    }
+
+    .status-bar {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      font-size: 0.82rem;
+      color: var(--muted);
+      margin-top: 0.75rem;
+    }
+
+    .dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--muted);
+    }
+
+    .dot.live {
+      background: var(--warning);
+      animation: pulse 1s infinite;
+    }
+
+    .dot.ready { background: var(--success); }
+    .dot.error { background: var(--error); }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(4px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.4; }
+    }
+
+    @media (min-width: 720px) {
+      .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1.25rem; }
+      .grid .card { margin-bottom: 0; }
+      .span-full { grid-column: 1 / -1; }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <h1>Multi-Step Technical Briefing Engine</h1>
+      <p>Decompose, retrieve, and synthesize technical briefings via local Ollama</p>
+      <span class="badge">gemma4:e2b · LangGraph · SSE Streaming</span>
+    </header>
+
+    <div class="grid">
+      <div class="card">
+        <h2>Your Task</h2>
+        <textarea id="taskInput" placeholder="Enter a complex technical question or select a sample prompt below..."></textarea>
+        <div class="actions">
+          <button class="primary" id="runBtn">Run Briefing</button>
+          <button class="secondary" id="cancelBtn" disabled>Cancel</button>
+          <button class="secondary" id="clearBtn">Clear</button>
+        </div>
+        <div class="status-bar">
+          <span class="dot ready" id="statusDot"></span>
+          <span id="statusText">Ready — ensure Ollama is running with gemma4:e2b</span>
+        </div>
+      </div>
+
+      <div class="card">
+        <h2>Sample Test Prompts</h2>
+        <div class="prompt-list" id="promptList"></div>
+      </div>
+
+      <div class="card span-full">
+        <h2>Pipeline Progress</h2>
+        <div class="timeline" id="timeline">
+          <div class="timeline-empty">Progress will appear here when you run a briefing.</div>
+        </div>
+      </div>
+
+      <div class="card span-full">
+        <h2>Final Briefing</h2>
+        <div class="result-box" id="resultBox">The synthesized briefing will appear here after the pipeline completes.</div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const SAMPLE_PROMPTS = [
+      {
+        label: "Solar Energy",
+        task: "Explain how solar panels work and their environmental impact"
+      },
+      {
+        label: "Blockchain",
+        task: "What is blockchain technology and how does it secure transactions?"
+      },
+      {
+        label: "REST vs GraphQL",
+        task: "Compare REST APIs vs GraphQL for modern web applications"
+      },
+      {
+        label: "Transformers / LLMs",
+        task: "How do transformers work in large language models?"
+      },
+      {
+        label: "Microservices",
+        task: "Explain microservices architecture and its trade-offs for startups"
+      },
+      {
+        label: "Climate Change",
+        task: "What causes climate change and what mitigation strategies exist?"
+      },
+      {
+        label: "HTTPS / TLS",
+        task: "How does HTTPS and TLS encrypt web traffic end to end?"
+      },
+      {
+        label: "SQL vs NoSQL",
+        task: "Explain the difference between SQL and NoSQL databases with use cases"
+      },
+      {
+        label: "Docker & Containers",
+        task: "What are Docker containers and how do they differ from virtual machines?"
+      },
+      {
+        label: "CI/CD Pipelines",
+        task: "Explain continuous integration and continuous deployment pipelines for software teams"
+      }
+    ];
+
+    const taskInput = document.getElementById("taskInput");
+    const runBtn = document.getElementById("runBtn");
+    const cancelBtn = document.getElementById("cancelBtn");
+    const clearBtn = document.getElementById("clearBtn");
+    const promptList = document.getElementById("promptList");
+    const timeline = document.getElementById("timeline");
+    const resultBox = document.getElementById("resultBox");
+    const statusDot = document.getElementById("statusDot");
+    const statusText = document.getElementById("statusText");
+
+    let abortController = null;
+    let activePromptIndex = -1;
+
+    function setStatus(state, text) {
+      statusDot.className = "dot " + state;
+      statusText.textContent = text;
+    }
+
+    function renderPrompts() {
+      promptList.innerHTML = "";
+      SAMPLE_PROMPTS.forEach((item, index) => {
+        const btn = document.createElement("button");
+        btn.className = "prompt-btn";
+        btn.type = "button";
+        btn.innerHTML = `<strong>${item.label}</strong><br><span style="color:var(--muted);font-size:0.82rem">${item.task}</span>`;
+        btn.addEventListener("click", () => selectPrompt(index));
+        promptList.appendChild(btn);
+      });
+    }
+
+    function selectPrompt(index) {
+      activePromptIndex = index;
+      taskInput.value = SAMPLE_PROMPTS[index].task;
+      document.querySelectorAll(".prompt-btn").forEach((btn, i) => {
+        btn.classList.toggle("active", i === index);
+      });
+    }
+
+    function clearUI() {
+      timeline.innerHTML = '<div class="timeline-empty">Progress will appear here when you run a briefing.</div>';
+      resultBox.textContent = "The synthesized briefing will appear here after the pipeline completes.";
+      resultBox.classList.remove("has-content");
+      activePromptIndex = -1;
+      document.querySelectorAll(".prompt-btn").forEach((btn) => btn.classList.remove("active"));
+    }
+
+    function addStep(step, detail, type = "running") {
+      const empty = timeline.querySelector(".timeline-empty");
+      if (empty) empty.remove();
+
+      const icons = { running: "⏳", done: "✓", error: "✗", complete: "★" };
+      const item = document.createElement("div");
+      item.className = `step-item ${type}`;
+      item.innerHTML = `
+        <span class="step-icon">${icons[type] || "•"}</span>
+        <div class="step-body">
+          <strong>${escapeHtml(step)}</strong>
+          <span>${escapeHtml(detail)}</span>
+        </div>
+      `;
+      timeline.appendChild(item);
+      item.scrollIntoView({ behavior: "smooth", block: "nearest" });
+      return item;
+    }
+
+    function escapeHtml(str) {
+      const div = document.createElement("div");
+      div.textContent = str;
+      return div.innerHTML;
+    }
+
+    function markPreviousStepsDone() {
+      timeline.querySelectorAll(".step-item.running").forEach((el) => {
+        el.classList.remove("running");
+        el.classList.add("done");
+        el.querySelector(".step-icon").textContent = "✓";
+      });
+    }
+
+    async function runBriefing() {
+      const task = taskInput.value.trim();
+      if (!task) {
+        setStatus("error", "Please enter a task or select a sample prompt.");
+        return;
+      }
+
+      abortController = new AbortController();
+      runBtn.disabled = true;
+      cancelBtn.disabled = false;
+      clearUI();
+      setStatus("live", "Pipeline running...");
+
+      timeline.innerHTML = "";
+      addStep("Starting", task, "running");
+
+      try {
+        const response = await fetch("/execute", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ task }),
+          signal: abortController.signal,
+        });
+
+        if (!response.ok) {
+          throw new Error(`Server returned ${response.status}`);
+        }
+
+        const reader = response.body.getReader();
+        const decoder = new TextDecoder();
+        let buffer = "";
+
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+
+          buffer += decoder.decode(value, { stream: true });
+          const parts = buffer.split("\n\n");
+          buffer = parts.pop();
+
+          for (const part of parts) {
+            const line = part.trim();
+            if (!line.startsWith("data: ")) continue;
+
+            const data = JSON.parse(line.slice(6));
+            handleEvent(data);
+          }
+        }
+
+        setStatus("ready", "Briefing complete.");
+      } catch (err) {
+        if (err.name === "AbortError") {
+          addStep("Cancelled", "Request was cancelled by user.", "error");
+          setStatus("ready", "Cancelled.");
+        } else {
+          addStep("Error", err.message, "error");
+          resultBox.textContent = `Failed to run briefing: ${err.message}\n\nMake sure the server and Ollama (gemma4:e2b) are running.`;
+          resultBox.classList.add("has-content");
+          setStatus("error", "Pipeline failed — check Ollama is running.");
+        }
+      } finally {
+        runBtn.disabled = false;
+        cancelBtn.disabled = true;
+        abortController = null;
+      }
+    }
+
+    function handleEvent(data) {
+      markPreviousStepsDone();
+
+      const step = data.step || "Update";
+      const detail = data.detail || "";
+      const isError = step.toLowerCase().includes("error");
+      const isComplete = step === "Complete";
+
+      if (isComplete) {
+        addStep(step, detail, "complete");
+        return;
+      }
+
+      addStep(step, detail, isError ? "error" : "running");
+
+      if (data.subtasks?.length) {
+        addStep("Subtasks", data.subtasks.join(" | "), "done");
+      }
+
+      if (data.output) {
+        resultBox.textContent = data.output;
+        resultBox.classList.add("has-content");
+      }
+
+      if (data.node === "handle_error") {
+        setStatus("error", "Pipeline routed to error handler.");
+      }
+    }
+
+    runBtn.addEventListener("click", runBriefing);
+    cancelBtn.addEventListener("click", () => abortController?.abort());
+    clearBtn.addEventListener("click", () => {
+      taskInput.value = "";
+      clearUI();
+      setStatus("ready", "Ready — ensure Ollama is running with gemma4:e2b");
+    });
+
+    taskInput.addEventListener("keydown", (e) => {
+      if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) runBriefing();
+    });
+
+    renderPrompts();
+  </script>
+</body>
+</html>
