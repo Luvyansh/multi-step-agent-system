@@ -1,5 +1,6 @@
 import asyncio
 import re
+from dataclasses import dataclass
 
 from langchain_core.messages import HumanMessage, SystemMessage
 from langchain_ollama import ChatOllama
@@ -7,6 +8,31 @@ from langchain_ollama import ChatOllama
 from utils import retry_with_backoff
 
 llm = ChatOllama(model="gemma4:e2b", temperature=0)
+
+
+@dataclass
+class DecomposeResult:
+    subtasks: list[str]
+    thinking: str
+
+
+@dataclass
+class SummaryResult:
+    summary: str
+    thinking: str
+
+
+def extract_thinking(response) -> tuple[str, str]:
+    """Returns (final_answer, thinking_text). Reads reasoning_content from
+    additional_kwargs directly; returns empty thinking_text if absent. No
+    regex parsing of content is needed — confirmed via live testing that
+    no <|channel>thought markers ever appear embedded in content for this
+    model/library combination."""
+    final_answer = response.content if hasattr(response, "content") else str(response)
+    thinking_text = ""
+    if hasattr(response, "additional_kwargs"):
+        thinking_text = response.additional_kwargs.get("reasoning_content", "")
+    return final_answer, thinking_text
 
 DECOMPOSE_SYSTEM = (
     "Break the task into exactly 3 specific research QUESTIONS needed to answer it. "
@@ -43,15 +69,15 @@ def parse_subtasks(raw: str) -> list[str]:
 
 
 @retry_with_backoff(max_retries=2)
-async def decompose(task: str) -> list[str]:
+async def decompose(task: str) -> DecomposeResult:
     """Analyzer/Decomposer: break a complex task into 3 subtasks."""
     messages = [
         SystemMessage(content=DECOMPOSE_SYSTEM),
         HumanMessage(content=DECOMPOSE_HUMAN.format(task=task)),
     ]
-    response = await llm.ainvoke(messages)
-    content = response.content if hasattr(response, "content") else str(response)
-    return parse_subtasks(content)
+    response = await llm.ainvoke(messages, reasoning=True)
+    content, thinking = extract_thinking(response)
+    return DecomposeResult(subtasks=parse_subtasks(content), thinking=thinking)
 
 
 @retry_with_backoff(max_retries=2)
@@ -66,12 +92,13 @@ async def retrieve_data(subtask: str) -> str:
     return f"[MOCK FINDING] Simulated retrieval result for '{subtask}'."
 
 
-async def write_summary(task: str, accumulated_data: list[str]) -> str:
+async def write_summary(task: str, accumulated_data: list[str]) -> SummaryResult:
     """Writer: synthesize collected data into a cohesive final paragraph."""
     notes = "\n".join(f"- {item}" for item in accumulated_data)
     messages = [
         SystemMessage(content=WRITER_SYSTEM),
         HumanMessage(content=WRITER_HUMAN.format(task=task, notes=notes)),
     ]
-    response = await llm.ainvoke(messages)
-    return response.content if hasattr(response, "content") else str(response)
+    response = await llm.ainvoke(messages, reasoning=True)
+    summary, thinking = extract_thinking(response)
+    return SummaryResult(summary=summary, thinking=thinking)
