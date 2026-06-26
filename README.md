@@ -4,6 +4,9 @@ A lightweight, locally hosted **multi-step agent system** that decomposes a comp
 
 Built for constrained hardware (4 GB VRAM / limited RAM) using **Ollama** with `gemma4:e2b` — no cloud APIs or API keys required.
 
+<img width="999" height="459" alt="Screenshot 2026-06-24 132940" src="https://github.com/user-attachments/assets/28ab21d4-ef15-429e-b2cc-63eb2b5cea9c" />
+
+
 ---
 
 ## What It Does
